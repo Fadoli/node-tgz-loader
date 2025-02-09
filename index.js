@@ -10,8 +10,6 @@ async function main() {
     const promises = tgzFiles.map(tgzFile => loader.getPackageInfo(tgzFile));
     await Promise.all(promises);
 
-    console.log(loader.registry);
-    console.log(loader.fakeFiles);
     const virt = new virtualFs(to, loader.fakeFiles);
     virt.enableInterception();
     const content = require('@fadoli/tgz-loader/package.json');

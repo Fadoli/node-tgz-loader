@@ -121,7 +121,6 @@ class VirtualFS {
                         throw error;
                     } else {
                         console.log(`Intercepted ${methodName} call: ${filePath}`);
-                        console.log(`Output: ${output}`);
                         return output;
                     }
                 }
@@ -137,18 +136,37 @@ class VirtualFS {
 
         Module._resolveFilename = function (request, parent, isMain, options) {
             console.log(`Intercepted _resolveFilename call: ${request}`);
-            console.log(`Parent: ${parent.filename}`);
+            const from = parent.filename;
+            console.log(`Parent: ${from}`);
             console.log(`isMain: ${isMain}`);
             console.log(`options: ${options}`);
             if(loader.registry[request]) {
                 // this is the entrypoint of a loaded module
                 request = path.join(request, loader.registry[request].main);
             }
-            const resolvedPath = path.join(self.mainDirectory, request);
+            if (from.startsWith(self.mainDirectory)) {
+                request = path.join(path.dirname(from), request);
+                console.log(request);
+            } else {
+                request = path.join(self.mainDirectory, request);
+            }
+            const resolvedPath = request;
             if (self.mightBeStubbed(resolvedPath)) {
                 console.log(`Intercepted _resolveFilename call: ${resolvedPath}`);
                 if (self.files[resolvedPath]) {
                     return resolvedPath;
+                }
+                if (self.files[resolvedPath + '.js']) {
+                    return resolvedPath + '.js';
+                }
+                if (self.files[resolvedPath + '.mjs']) {
+                    return resolvedPath + '.mjs';
+                }
+                if (self.files[resolvedPath + '.json']) {
+                    return resolvedPath + '.json';
+                }
+                if (self.files[resolvedPath + '.node']) {
+                    return resolvedPath + '.node';
                 }
             }
             return self.originalResolveFilename.apply(this, arguments);
