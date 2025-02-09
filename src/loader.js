@@ -36,6 +36,8 @@ function getPackageInfo(tgzFileName) {
         if (!packageJson) throw new Error('No package.json found in .tgz file');
         const json = JSON.parse(packageJson);
         registry[json.name] = {
+            main: json.main || json.module || json.browser,
+            self: 'package.json',
             name: json.name,
             version: json.version,
             files: files
@@ -52,5 +54,6 @@ function getPackageInfo(tgzFileName) {
 module.exports = {
     scanForTgzFiles,
     getPackageInfo,
-    fakeFiles
+    fakeFiles,
+    registry
 };

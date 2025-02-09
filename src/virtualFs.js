@@ -1,4 +1,8 @@
 const fs = require('fs');
+const path = require('path');
+const Module = require('module');
+
+const loader = require('./loader');
 
 /**
  * @description A virtual file system that can intercept file system calls and fake load files from memory.
@@ -22,6 +26,7 @@ class VirtualFS {
         this.originalReadDirSync = fs.readdirSync;
         this.originalStat = fs.stat;
         this.originalStatSync = fs.statSync;
+        this.originalResolveFilename = Module._resolveFilename;
     }
 
     /**
@@ -47,7 +52,7 @@ class VirtualFS {
         }
 
         function interceptMethod(originalMethod, methodName) {
-            return function(filePath, ...args) {
+            return function (filePath, ...args) {
                 if (!self.mightBeStubbed(filePath)) {
                     return originalMethod.apply(this, [filePath, ...args]);
                 }
@@ -66,6 +71,9 @@ class VirtualFS {
                     output = self.files[filePath];
                     if (!output) {
                         error = new Error(`ENOENT: no such file or directory, open '${filePath}'`);
+                    }
+                    if (args[1] === 'utf8') {
+                        output = output.toString('utf8');
                     }
                 } else if (methodName.startsWith('stat')) {
                     const fileContent = self.files[filePath];
@@ -111,6 +119,8 @@ class VirtualFS {
                     if (error) {
                         throw error;
                     } else {
+                        console.log(`Intercepted ${methodName} call: ${filePath}`);
+                        console.log(`Output: ${output}`);
                         return output;
                     }
                 }
@@ -123,11 +133,30 @@ class VirtualFS {
         fs.readdirSync = interceptMethod(self.originalReadDirSync, 'readdirSync');
         fs.stat = interceptMethod(self.originalStat, 'stat');
         fs.statSync = interceptMethod(self.originalStatSync, 'statSync');
+
+        Module._resolveFilename = function (request, parent, isMain, options) {
+            console.log(`Intercepted _resolveFilename call: ${request}`);
+            console.log(`Parent: ${parent.filename}`);
+            console.log(`isMain: ${isMain}`);
+            console.log(`options: ${options}`);
+            if(loader.registry[request]) {
+                // this is the entrypoint of a loaded module
+                request = path.join(request, loader.registry[request].main);
+            }
+            const resolvedPath = path.join(self.mainDirectory, request);
+            if (self.mightBeStubbed(resolvedPath)) {
+                console.log(`Intercepted _resolveFilename call: ${resolvedPath}`);
+                if (self.files[resolvedPath]) {
+                    return resolvedPath;
+                }
+            }
+            return self.originalResolveFilename.apply(this, arguments);
+        };
     }
 
     /**
      * @description Stop intercepting file calls to fake load files from memory.
-     * @method enableInterception
+     * @method disableInterception
      * @memberof VirtualFS
      */
     disableInterception() {
@@ -138,6 +167,7 @@ class VirtualFS {
         fs.readdirSync = this.originalReadDirSync;
         fs.stat = this.originalStat;
         fs.statSync = this.originalStatSync;
+        Module._resolveFilename = this.originalResolveFilename; // Restore the original _resolveFilename method
     }
 }
 
