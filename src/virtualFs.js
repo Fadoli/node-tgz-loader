@@ -72,7 +72,8 @@ class VirtualFS {
                     if (!output) {
                         error = new Error(`ENOENT: no such file or directory, open '${filePath}'`);
                     }
-                    if (args[1] === 'utf8') {
+                    // Args[0] is the encoding parameter when requiring() a file
+                    if (args[0] === 'utf8') {
                         output = output.toString('utf8');
                     }
                 } else if (methodName.startsWith('stat')) {

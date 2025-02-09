@@ -18,6 +18,8 @@ async function main() {
     console.log(content);
     const other = require('@fadoli/node-fast-running-stats');
     console.log(other);
+    const self = require('@fadoli/tgz-loader');
+    console.log(self);
     virt.disableInterception();
 }
 main();
