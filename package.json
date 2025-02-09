@@ -1,0 +1,16 @@
+{
+  "name": "@fadoli/tgz-loader",
+  "version": "1.0.0",
+  "description": "load js library from valid tgz packages",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "node",
+    "tgz",
+    "loader"
+  ],
+  "author": "fadoli",
+  "license": "ISC"
+}
