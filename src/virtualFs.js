@@ -3,6 +3,7 @@ const path = require('path');
 const Module = require('module');
 
 const loader = require('./loader');
+const extensions = ['', '.js', '.mjs', '.json', '.node'];
 
 /**
  * @description A virtual file system that can intercept file system calls and fake load files from memory.
@@ -135,38 +136,26 @@ class VirtualFS {
         fs.statSync = interceptMethod(self.originalStatSync, 'statSync');
 
         Module._resolveFilename = function (request, parent, isMain, options) {
-            console.log(`Intercepted _resolveFilename call: ${request}`);
             const from = parent.filename;
-            console.log(`Parent: ${from}`);
-            console.log(`isMain: ${isMain}`);
-            console.log(`options: ${options}`);
             if(loader.registry[request]) {
                 // this is the entrypoint of a loaded module
                 request = path.join(request, loader.registry[request].main);
             }
+
             if (from.startsWith(self.mainDirectory)) {
                 request = path.join(path.dirname(from), request);
-                console.log(request);
             } else {
                 request = path.join(self.mainDirectory, request);
             }
             const resolvedPath = request;
+
+
             if (self.mightBeStubbed(resolvedPath)) {
                 console.log(`Intercepted _resolveFilename call: ${resolvedPath}`);
-                if (self.files[resolvedPath]) {
-                    return resolvedPath;
-                }
-                if (self.files[resolvedPath + '.js']) {
-                    return resolvedPath + '.js';
-                }
-                if (self.files[resolvedPath + '.mjs']) {
-                    return resolvedPath + '.mjs';
-                }
-                if (self.files[resolvedPath + '.json']) {
-                    return resolvedPath + '.json';
-                }
-                if (self.files[resolvedPath + '.node']) {
-                    return resolvedPath + '.node';
+                for (const ext of extensions) {
+                    if (self.files[resolvedPath + ext]) {
+                        return resolvedPath + ext;
+                    }
                 }
             }
             return self.originalResolveFilename.apply(this, arguments);
